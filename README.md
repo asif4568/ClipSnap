@@ -131,7 +131,7 @@ The renderer never touches the filesystem directly. Every file operation goes th
 
 ## About
 
-ClipSnap started as a first-year Software Engineering Web Programming lab project, which is why the code leans on straightforward, well-commented JavaScript — `getElementById`, `addEventListener`, `async`/`await`, and plain `try`/`catch` — rather than clever abstractions.
+ClipSnap started as a third-year Software Engineering Web Programming lab project, which is why the code leans on straightforward, well-commented JavaScript — `getElementById`, `addEventListener`, `async`/`await`, and plain `try`/`catch` — rather than clever abstractions.
 
 ## License
 
