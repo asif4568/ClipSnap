@@ -996,6 +996,37 @@ input, textarea, select, button {
   opacity: 1;
 }
 
+/* =========================================================
+   Multi-Select ("Select") Mode
+   Makes it obvious that clicking a card now picks it instead
+   of opening the annotation editor.
+   ========================================================= */
+
+.batch-mode-active .notion-card {
+  cursor: copy;
+}
+
+.batch-mode-active .notion-card:hover {
+  border-color: var(--accent-blue);
+  transform: none;
+}
+
+.batch-mode-active .notion-card:hover .card-thumbnail {
+  transform: none;
+}
+
+/* Hide the per-card quick actions while selecting, so a stray click
+   can't delete a screenshot when the user only meant to tick it. */
+.batch-mode-active .card-quick-actions {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.batch-mode-active .card-select-checkbox {
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.45);
+  border-radius: 3px;
+}
+
 .card-thumbnail-wrap {
   width: 100%;
   height: 135px;
@@ -1026,10 +1057,13 @@ input, textarea, select, button {
   opacity: 0;
   transition: opacity 0.15s ease;
   z-index: 5;
+  /* Invisible buttons must not swallow clicks meant for the card */
+  pointer-events: none;
 }
 
 .notion-card:hover .card-quick-actions {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .card-action-icon-btn {
@@ -1140,6 +1174,19 @@ input, textarea, select, button {
 
 .notion-table tr:hover {
   background: var(--bg-surface-hover);
+}
+
+/* A picked row in Table view. The gallery cards get a blue outline, so the rows
+   get a matching blue tint — otherwise only the tiny checkbox showed the state. */
+.notion-table tbody tr.selected,
+.notion-table tbody tr.selected:hover {
+  background: var(--accent-blue-bg);
+  box-shadow: inset 3px 0 0 var(--accent-blue);
+}
+
+/* In Select mode the whole row is a click target, so show the copy cursor. */
+.batch-mode-active .notion-table tbody tr {
+  cursor: copy;
 }
 
 .table-thumbnail {
@@ -1265,12 +1312,27 @@ input, textarea, select, button {
   padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   transition: all 0.15s ease;
 }
 
 .batch-action-btn:hover {
   background: var(--bg-surface-hover);
   border-color: var(--border-medium);
+}
+
+/* Actions that need at least one selected screenshot */
+.batch-action-btn:disabled,
+.batch-select:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.batch-action-btn:disabled:hover {
+  background: var(--bg-surface);
+  border-color: var(--border-subtle);
 }
 
 .batch-action-btn.danger {
@@ -1761,6 +1823,89 @@ input, textarea, select, button {
   padding: 12px 18px;
   border-top: 1px solid var(--border-subtle);
   gap: 8px;
+}
+
+/* =========================================================
+   In-App Confirm / Prompt Dialogs & Toasts
+   These replace the native confirm(), prompt() and alert(),
+   which permanently steal keyboard focus from this frameless
+   transparent window and leave every input field unusable.
+   ========================================================= */
+
+/* Must sit above the annotation editor (.modal is z-index 2000), because the
+   text tool opens a prompt while the editor is still on screen. */
+.top-layer-modal {
+  z-index: 4000;
+}
+
+.dialog-message {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.btn-primary.danger {
+  background: #d93025;
+  border-color: #d93025;
+}
+
+.btn-primary.danger:hover {
+  background: #b3261e;
+  border-color: #b3261e;
+}
+
+.toast-stack {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 5000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  /* Toasts are informational only — never block clicks behind them */
+  pointer-events: none;
+}
+
+.app-toast {
+  background: var(--bg-modal);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border-medium);
+  border-left: 3px solid var(--accent-blue);
+  border-radius: 8px;
+  color: var(--text-main);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 10px 14px;
+  max-width: 320px;
+  box-shadow: var(--shadow-float);
+  animation: toastIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-toast.success {
+  border-left-color: #2ed573;
+}
+
+.app-toast.error {
+  border-left-color: #ff4757;
+}
+
+.app-toast.leaving {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* =========================================================

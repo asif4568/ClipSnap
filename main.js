@@ -87,6 +87,11 @@ function closePopupIfShowingFile(filePath) {
   isPopupPinned = false;
 }
 
+// Bring the dashboard back to the front AND give the page itself the keyboard.
+// Our window is frameless + transparent, and on that kind of window a native
+// OS dialog takes the keyboard away from the web page. Calling focus() on the
+// window alone is not enough — the typing cursor only comes back once we also
+// focus the webContents, otherwise every text field looks "blocked".
 function focusMainWindow() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
 
@@ -94,6 +99,7 @@ function focusMainWindow() {
     mainWindow.restore();
   }
   mainWindow.focus();
+  mainWindow.webContents.focus();
 }
 
 // Read/Save category metadata (names, emojis)
@@ -320,22 +326,11 @@ function startClipboardWatcher() {
 // IPC HANDLERS
 // ==========================================
 
-ipcMain.handle('confirm-action', async (event, options = {}) => {
-  const ownerWindow = BrowserWindow.fromWebContents(event.sender) || mainWindow;
-  const result = await dialog.showMessageBox(ownerWindow, {
-    type: options.type || 'warning',
-    title: options.title || 'Confirm Action',
-    message: options.message || 'Are you sure?',
-    detail: options.detail || '',
-    buttons: options.buttons || ['Confirm', 'Cancel'],
-    defaultId: typeof options.defaultId === 'number' ? options.defaultId : 1,
-    cancelId: typeof options.cancelId === 'number' ? options.cancelId : 1,
-    noLink: true
-  });
-
-  focusMainWindow();
-  return { confirmed: result.response === 0 };
-});
+// NOTE: there is deliberately no "confirm dialog" handler here any more.
+// A native dialog.showMessageBox() takes the keyboard away from our frameless,
+// transparent window, which is what made the text fields stop accepting typing
+// after a delete. All confirmations now happen inside the page instead — see
+// showConfirmDialog() in renderer.js.
 
 // Move file to any category (default or custom)
 ipcMain.handle('move-file', async (event, sourcePath, targetCategory) => {
@@ -817,6 +812,12 @@ ipcMain.handle('select-storage-directory', async () => {
       properties: ['openDirectory', 'createDirectory']
     });
 
+    // This folder picker is the only native dialog left in the app. Native
+    // dialogs steal the keyboard from our frameless window, so we hand focus
+    // back to the page right away — otherwise the text fields in Settings
+    // would stop accepting typing after choosing a folder.
+    focusMainWindow();
+
     if (result.canceled || !result.filePaths.length) {
       return { success: false, canceled: true };
     }
@@ -826,6 +827,7 @@ ipcMain.handle('select-storage-directory', async () => {
     return { success: true, path: selectedPath };
   } catch (err) {
     console.error('Error selecting storage directory:', err);
+    focusMainWindow();
     return { success: false, error: err.message };
   }
 });

@@ -491,6 +491,54 @@
         </div>
     </div>
 
+    <!-- In-App Confirm Dialog.
+         We do NOT use the browser's built-in confirm() here. In a frameless,
+         transparent Electron window the native dialog steals keyboard focus and
+         never gives it back, which makes every text field look "blocked"
+         afterwards. This dialog is plain HTML, so focus never leaves the page. -->
+    <div class="modal top-layer-modal" id="confirmDialog" style="display: none;">
+        <div class="modal-backdrop" id="confirmDialogBackdrop"></div>
+        <div class="notion-dialog">
+            <div class="dialog-header">
+                <h3 id="confirmDialogTitle">Are you sure?</h3>
+                <button class="dialog-close-btn" id="confirmDialogCloseBtn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="dialog-body">
+                <p class="dialog-message" id="confirmDialogMessage"></p>
+            </div>
+            <div class="dialog-footer">
+                <button class="btn-subtle" id="confirmDialogCancelBtn">Cancel</button>
+                <button class="btn-primary" id="confirmDialogOkBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- In-App Prompt Dialog (replaces the native prompt() for the same reason) -->
+    <div class="modal top-layer-modal" id="promptDialog" style="display: none;">
+        <div class="modal-backdrop" id="promptDialogBackdrop"></div>
+        <div class="notion-dialog">
+            <div class="dialog-header">
+                <h3 id="promptDialogTitle">Enter a value</h3>
+                <button class="dialog-close-btn" id="promptDialogCloseBtn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="dialog-body">
+                <label class="dialog-label" id="promptDialogLabel">Value</label>
+                <input type="text" id="promptDialogInput" class="notion-input" autocomplete="off">
+            </div>
+            <div class="dialog-footer">
+                <button class="btn-subtle" id="promptDialogCancelBtn">Cancel</button>
+                <button class="btn-primary" id="promptDialogOkBtn">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications (replaces the native alert()) -->
+    <div class="toast-stack" id="toastStack"></div>
+
     <script src="renderer.js"></script>
 </body>
 </html>

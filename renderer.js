@@ -103,6 +103,116 @@ function suppressNextMainGalleryUpdate() {
   }, 750);
 }
 
+// ===== In-App Dialogs & Toasts =====
+// IMPORTANT: we never call the browser's confirm(), prompt() or alert() here.
+// Our window is frameless and transparent (see main.js), and on that kind of
+// window the native dialog takes keyboard focus away from the page and never
+// hands it back. That is what made the search boxes stop accepting typing
+// after deleting a screenshot or a category. These dialogs are ordinary HTML,
+// so focus stays inside the page the whole time.
+
+let activeDialogEl = null;          // the dialog currently on screen
+let activeDialogResolve = null;     // the promise resolver waiting for an answer
+let activeDialogCancelValue = null; // what "cancel" resolves to for this dialog
+let elementFocusedBeforeDialog = null;
+
+// Close the open dialog and hand the answer back to whoever is awaiting it.
+function settleActiveDialog(result) {
+  if (!activeDialogEl) return;
+
+  const resolve = activeDialogResolve;
+  const previouslyFocused = elementFocusedBeforeDialog;
+
+  activeDialogEl.style.display = 'none';
+  activeDialogEl = null;
+  activeDialogResolve = null;
+  activeDialogCancelValue = null;
+  elementFocusedBeforeDialog = null;
+
+  // Put the text cursor back where the user left it so typing keeps working.
+  if (previouslyFocused && document.body.contains(previouslyFocused)) {
+    previouslyFocused.focus();
+  } else {
+    window.focus();
+  }
+
+  if (resolve) resolve(result);
+}
+
+function cancelActiveDialog() {
+  if (activeDialogEl) settleActiveDialog(activeDialogCancelValue);
+}
+
+function isDialogOpen() {
+  return activeDialogEl !== null;
+}
+
+// Remember the focused element and show a dialog. Only one at a time.
+function openDialog(modalEl, cancelValue) {
+  cancelActiveDialog();
+
+  elementFocusedBeforeDialog = document.activeElement;
+  activeDialogEl = modalEl;
+  activeDialogCancelValue = cancelValue;
+  modalEl.style.display = 'flex';
+}
+
+// Ask a yes/no question. Resolves true when confirmed, false otherwise.
+function showConfirmDialog(options = {}) {
+  const modal = document.getElementById('confirmDialog');
+  const okBtn = document.getElementById('confirmDialogOkBtn');
+
+  document.getElementById('confirmDialogTitle').textContent = options.title || 'Are you sure?';
+  document.getElementById('confirmDialogMessage').textContent = options.message || '';
+  okBtn.textContent = options.confirmText || 'Confirm';
+  okBtn.classList.toggle('danger', options.danger === true);
+
+  openDialog(modal, false);
+  setTimeout(() => okBtn.focus(), 50);
+
+  return new Promise(resolve => {
+    activeDialogResolve = resolve;
+  });
+}
+
+// Ask for a line of text. Resolves the text, or null when cancelled.
+function showPromptDialog(options = {}) {
+  const modal = document.getElementById('promptDialog');
+  const input = document.getElementById('promptDialogInput');
+
+  document.getElementById('promptDialogTitle').textContent = options.title || 'Enter a value';
+  document.getElementById('promptDialogLabel').textContent = options.label || 'Value';
+  input.value = options.defaultValue || '';
+  input.placeholder = options.placeholder || '';
+
+  openDialog(modal, null);
+  setTimeout(() => {
+    input.focus();
+    input.select();
+  }, 50);
+
+  return new Promise(resolve => {
+    activeDialogResolve = resolve;
+  });
+}
+
+// Small message in the corner. Replaces alert(), which also froze the inputs.
+function showToast(message, type = 'info') {
+  const stack = document.getElementById('toastStack');
+  if (!stack || !message) return;
+
+  const toast = document.createElement('div');
+  toast.className = `app-toast ${type}`;
+  toast.textContent = message;
+  stack.appendChild(toast);
+
+  // Fade out and remove so the stack never keeps growing.
+  setTimeout(() => {
+    toast.classList.add('leaving');
+    setTimeout(() => toast.remove(), 250);
+  }, 2800);
+}
+
 // ===== Initialization =====
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
@@ -570,9 +680,13 @@ function renderGalleryGrid(images) {
       showContextMenu(e.clientX, e.clientY, img.path);
     });
 
-    card.draggable = true;
+    // Cards can be dragged out into other apps (Word, Discord, ...), but never
+    // while Select mode is on. A native drag swallows the following "click",
+    // so in Select mode the click that ticks the checkbox would never arrive —
+    // that is a big part of why the Select button felt dead.
+    card.draggable = !isBatchMode;
     card.addEventListener('dragstart', (e) => {
-      if (card.dataset.interactivePointerDown === 'true' || isInteractiveTarget(e.target)) {
+      if (isBatchMode || card.dataset.interactivePointerDown === 'true' || isInteractiveTarget(e.target)) {
         e.preventDefault();
         card.dataset.interactivePointerDown = 'false';
         return;
@@ -644,7 +758,15 @@ function renderTableView(images) {
     });
 
     tr.addEventListener('click', (e) => {
-      if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT' && !e.target.closest('button')) {
+      if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.closest('button')) {
+        return;
+      }
+
+      // In Select mode a row click picks the row instead of opening the editor,
+      // exactly like the gallery cards behave.
+      if (isBatchMode) {
+        toggleItemSelection(img.path);
+      } else {
         openImageEditor(img.path);
       }
     });
@@ -670,7 +792,7 @@ async function deleteScreenshotWithUiCleanup(filePath) {
     await loadGalleryData();
   } else {
     suppressNextGalleryUpdate = false;
-    alert(result ? result.error : 'Failed to delete screenshot.');
+    showToast(result ? result.error : 'Failed to delete screenshot.', 'error');
   }
 
   return result;
@@ -681,10 +803,17 @@ async function handleCardAction(action, filePath) {
     openImageEditor(filePath);
   } else if (action === 'copy') {
     await window.electronAPI.copyImageToClipboard(filePath);
+    showToast('Screenshot copied to clipboard.', 'success');
   } else if (action === 'reveal') {
     await window.electronAPI.openInExplorer(filePath);
   } else if (action === 'delete') {
-    if (confirm('Delete this screenshot permanently?')) {
+    const confirmed = await showConfirmDialog({
+      title: 'Delete screenshot',
+      message: 'This screenshot will be permanently deleted from your storage folder.',
+      confirmText: 'Delete',
+      danger: true
+    });
+    if (confirmed) {
       await deleteScreenshotWithUiCleanup(filePath);
     }
   }
@@ -705,18 +834,76 @@ function clearBatchSelection() {
   updateBatchUI();
 }
 
+// Turn multi-select ("Select") mode on or off.
+// The old toolbar button only flipped this variable, so nothing on screen
+// changed and the cards still opened the editor when clicked. Now every part of
+// the UI follows this one flag, and we re-render so the cards pick up the new
+// click / drag behaviour.
+function setBatchMode(enabled) {
+  isBatchMode = enabled;
+
+  const toggleBtn = document.getElementById('batchSelectToggleBtn');
+  const toggleLabel = document.getElementById('batchBtnLabel');
+
+  if (toggleBtn) {
+    toggleBtn.classList.toggle('active', isBatchMode);
+    toggleBtn.title = isBatchMode ? 'Leave selection mode' : 'Select multiple screenshots';
+  }
+  // The label tells the user which state they are in.
+  if (toggleLabel) toggleLabel.textContent = isBatchMode ? 'Done' : 'Select';
+
+  // This class on <body> is what the CSS uses to keep every checkbox visible
+  // and to change the mouse cursor over the cards.
+  document.body.classList.toggle('batch-mode-active', isBatchMode);
+
+  // Leaving the mode always throws the current selection away.
+  if (!isBatchMode) selectedFilePaths.clear();
+
+  displayContent();
+  updateBatchUI();
+}
+
+function toggleBatchMode() {
+  setBatchMode(!isBatchMode);
+}
+
+// Select (or unselect) every screenshot currently visible on the page.
+function toggleSelectAllVisible() {
+  const images = getProcessedImages();
+  const allSelected = images.length > 0 && images.every(img => selectedFilePaths.has(img.path));
+
+  if (allSelected) {
+    selectedFilePaths.clear();
+  } else {
+    images.forEach(img => selectedFilePaths.add(img.path));
+  }
+
+  updateBatchUI();
+}
+
 function updateBatchUI() {
   const count = selectedFilePaths.size;
+  const images = getProcessedImages();
   const floatingBar = document.getElementById('floatingBatchBar');
   const countBadge = document.getElementById('selectedCountBadge');
 
   countBadge.textContent = count;
 
-  if (count > 0) {
+  // Show the action bar the moment Select mode is switched on, even before
+  // anything is picked. Previously it only appeared once count > 0, so turning
+  // the mode on gave the user no feedback at all. (With an empty gallery there
+  // is nothing to act on, so the bar stays hidden.)
+  if (count > 0 || (isBatchMode && images.length > 0)) {
     floatingBar.classList.add('show');
   } else {
     floatingBar.classList.remove('show');
   }
+
+  // Buttons that need at least one screenshot stay greyed out until there is one.
+  ['batchMoveSelect', 'batchCopyBtn', 'batchDeleteBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = count === 0;
+  });
 
   document.querySelectorAll('.notion-card').forEach(card => {
     const p = card.dataset.path;
@@ -729,9 +916,23 @@ function updateBatchUI() {
   document.querySelectorAll('#tableBody tr').forEach(row => {
     const p = row.dataset.path;
     const isSel = selectedFilePaths.has(p);
+    row.classList.toggle('selected', isSel);
     const cb = row.querySelector('.row-checkbox');
     if (cb) cb.checked = isSel;
   });
+
+  // "Select All" becomes "Clear All" once everything on screen is already picked.
+  const allVisibleSelected = images.length > 0 && images.every(img => selectedFilePaths.has(img.path));
+
+  const selectAllLabel = document.getElementById('batchSelectAllLabel');
+  if (selectAllLabel) selectAllLabel.textContent = allVisibleSelected ? 'Clear All' : 'Select All';
+
+  const selectAllBtn = document.getElementById('batchSelectAllBtn');
+  if (selectAllBtn) selectAllBtn.disabled = images.length === 0;
+
+  // Keep the checkbox in the table header in sync as well.
+  const headerCheckbox = document.getElementById('selectAllCheckbox');
+  if (headerCheckbox) headerCheckbox.checked = allVisibleSelected;
 }
 
 // ===== Context Menu =====
@@ -816,22 +1017,31 @@ function getCanvasCoordinates(e) {
   };
 }
 
-function onCanvasMouseDown(e) {
-  isDrawing = true;
+async function onCanvasMouseDown(e) {
   const coords = getCanvasCoordinates(e);
   startX = coords.x;
   startY = coords.y;
 
   if (currentTool === 'text') {
-    const userText = prompt('Enter annotation text:');
+    // The text tool asks for input, so it never starts a freehand stroke.
+    isDrawing = false;
+
+    const userText = await showPromptDialog({
+      title: 'Add text annotation',
+      label: 'Text',
+      placeholder: 'Type your note...'
+    });
+
     if (userText && userText.trim()) {
       editorCtx.font = `bold ${currentStrokeSize * 6}px ${getComputedStyle(document.body).fontFamily}`;
       editorCtx.fillStyle = currentColor;
       editorCtx.fillText(userText, startX, startY);
       saveUndoState();
     }
-    isDrawing = false;
+    return;
   }
+
+  isDrawing = true;
 }
 
 function onCanvasMouseMove(e) {
@@ -924,7 +1134,7 @@ async function saveAnnotation(saveAsCopy = false) {
     closeImageEditor();
     await loadGalleryData();
   } else {
-    alert('Failed to save image annotation: ' + (res ? res.error : 'Unknown error'));
+    showToast('Failed to save annotation: ' + (res ? res.error : 'Unknown error'), 'error');
   }
 }
 
@@ -991,11 +1201,13 @@ async function confirmCreateCategory() {
       await loadCategories();
       await loadGalleryData();
       selectFolder(res.categoryName);
+      showToast(`Category "${res.displayName || name}" created.`, 'success');
     } else {
-      alert(res ? res.error : 'Failed to create category');
+      showToast(res ? res.error : 'Failed to create category', 'error');
     }
   } catch (err) {
     console.error('Error creating category:', err);
+    showToast('Failed to create category.', 'error');
   } finally {
     isCreatingCategory = false;
     btn.textContent = 'Create Category';
@@ -1004,15 +1216,23 @@ async function confirmCreateCategory() {
 }
 
 async function deleteCategoryPrompt(categoryId, displayName) {
-  if (confirm(`Are you sure you want to delete category "${displayName}"? (Must be empty)`)) {
-    const res = await window.electronAPI.deleteCategory(categoryId);
-    if (res && res.success) {
-      await loadCategories();
-      await loadGalleryData();
-      selectFolder('all');
-    } else {
-      alert(res ? res.error : 'Could not delete category. Make sure all screenshots are moved out first.');
-    }
+  const confirmed = await showConfirmDialog({
+    title: `Delete "${displayName}"?`,
+    message: 'The category folder must be empty. Move or delete its screenshots first.',
+    confirmText: 'Delete Category',
+    danger: true
+  });
+
+  if (!confirmed) return;
+
+  const res = await window.electronAPI.deleteCategory(categoryId);
+  if (res && res.success) {
+    await loadCategories();
+    await loadGalleryData();
+    selectFolder('all');
+    showToast(`Category "${displayName}" deleted.`, 'success');
+  } else {
+    showToast(res ? res.error : 'Could not delete category. Move its screenshots out first.', 'error');
   }
 }
 
@@ -1112,18 +1332,41 @@ function setupEventListeners() {
 
   // Global Keyboard Shortcuts
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      // Close only the topmost thing, so cancelling a confirm dialog that was
+      // opened on top of the editor does not also close the editor.
+      if (isDialogOpen()) {
+        cancelActiveDialog();
+        return;
+      }
+
+      hideContextMenu();
+
+      if (document.getElementById('editorModal').style.display === 'flex') {
+        closeImageEditor();
+        return;
+      }
+      if (document.getElementById('categoryModal').style.display === 'flex') {
+        closeCategoryModal();
+        return;
+      }
+      if (document.getElementById('settingsModal').style.display === 'flex') {
+        closeSettingsModal();
+        return;
+      }
+      if (isBatchMode) {
+        setBatchMode(false);
+      }
+      return;
+    }
+
+    // While a dialog is on screen the shortcuts below must not steal focus.
+    if (isDialogOpen()) return;
+
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       searchInput.focus();
       searchInput.select();
-      return;
-    }
-
-    if (e.key === 'Escape') {
-      hideContextMenu();
-      closeImageEditor();
-      closeCategoryModal();
-      closeSettingsModal();
     }
   });
 
@@ -1143,19 +1386,15 @@ function setupEventListeners() {
     displayContent();
   });
 
-  // Batch Select Toggle
-  const batchBtn = document.getElementById('batchSelectToggleBtn');
-  batchBtn.addEventListener('click', () => {
-    isBatchMode = !isBatchMode;
-    batchBtn.classList.toggle('active', isBatchMode);
-    document.body.classList.toggle('batch-mode-active', isBatchMode);
-    if (!isBatchMode) {
-      clearBatchSelection();
-    }
-  });
+  // Batch Select Toggle — the "Select" button in the toolbar
+  document.getElementById('batchSelectToggleBtn').addEventListener('click', toggleBatchMode);
 
   // Batch Actions
-  document.getElementById('batchCancelBtn').addEventListener('click', clearBatchSelection);
+  // The ✕ leaves selection mode entirely (the bar is also visible with 0 picked).
+  document.getElementById('batchCancelBtn').addEventListener('click', () => setBatchMode(false));
+
+  // Select All / Clear All toggle
+  document.getElementById('batchSelectAllBtn').addEventListener('click', toggleSelectAllVisible);
 
   document.getElementById('batchMoveSelect').addEventListener('change', async (e) => {
     const targetCat = e.target.value;
@@ -1166,8 +1405,9 @@ function setupEventListeners() {
     if (res && res.success) {
       clearBatchSelection();
       await loadGalleryData();
+      showToast(`Moved ${res.count} screenshot${res.count !== 1 ? 's' : ''}.`, 'success');
     } else {
-      alert('Batch move failed: ' + (res ? res.error : 'Unknown'));
+      showToast('Batch move failed: ' + (res ? res.error : 'Unknown error'), 'error');
     }
     e.target.value = '';
   });
@@ -1176,7 +1416,7 @@ function setupEventListeners() {
     const first = Array.from(selectedFilePaths)[0];
     if (first) {
       await window.electronAPI.copyImageToClipboard(first);
-      alert('Copied screenshot to clipboard!');
+      showToast('Screenshot copied to clipboard.', 'success');
     }
   });
 
@@ -1184,19 +1424,26 @@ function setupEventListeners() {
     const count = selectedFilePaths.size;
     if (count === 0) return;
 
-    if (confirm(`Delete all ${count} selected screenshots?`)) {
-      const paths = Array.from(selectedFilePaths);
-      hideContextMenu();
-      suppressNextMainGalleryUpdate();
+    const confirmed = await showConfirmDialog({
+      title: `Delete ${count} screenshot${count !== 1 ? 's' : ''}?`,
+      message: 'The selected screenshots will be permanently deleted from your storage folder.',
+      confirmText: 'Delete',
+      danger: true
+    });
+    if (!confirmed) return;
 
-      const result = await window.electronAPI.batchDeleteFiles(paths);
-      if (result && result.success) {
-        clearBatchSelection();
-        await loadGalleryData();
-      } else {
-        suppressNextGalleryUpdate = false;
-        alert(result ? result.error : 'Failed to delete selected screenshots.');
-      }
+    const paths = Array.from(selectedFilePaths);
+    hideContextMenu();
+    suppressNextMainGalleryUpdate();
+
+    const result = await window.electronAPI.batchDeleteFiles(paths);
+    if (result && result.success) {
+      clearBatchSelection();
+      await loadGalleryData();
+      showToast(`Deleted ${result.count} screenshot${result.count !== 1 ? 's' : ''}.`, 'success');
+    } else {
+      suppressNextGalleryUpdate = false;
+      showToast(result ? result.error : 'Failed to delete selected screenshots.', 'error');
     }
   });
 
@@ -1251,7 +1498,7 @@ function setupEventListeners() {
       const dataUrl = editorCanvas.toDataURL('image/png');
       await window.electronAPI.saveAnnotatedImage(editorCurrentImagePath, dataUrl, false);
       await window.electronAPI.copyImageToClipboard(editorCurrentImagePath);
-      alert('Annotated image copied to clipboard!');
+      showToast('Annotated image copied to clipboard.', 'success');
     }
   });
 
@@ -1290,7 +1537,10 @@ function setupEventListeners() {
   document.getElementById('contextCopyImage').addEventListener('click', async () => {
     const target = contextMenuTarget;
     hideContextMenu();
-    if (target) await window.electronAPI.copyImageToClipboard(target);
+    if (target) {
+      await window.electronAPI.copyImageToClipboard(target);
+      showToast('Screenshot copied to clipboard.', 'success');
+    }
   });
   document.getElementById('contextOpenExplorer').addEventListener('click', async () => {
     const target = contextMenuTarget;
@@ -1300,8 +1550,37 @@ function setupEventListeners() {
   document.getElementById('contextDelete').addEventListener('click', async () => {
     const target = contextMenuTarget;
     hideContextMenu();
-    if (target && confirm('Delete this screenshot permanently?')) {
+    if (!target) return;
+
+    const confirmed = await showConfirmDialog({
+      title: 'Delete screenshot',
+      message: 'This screenshot will be permanently deleted from your storage folder.',
+      confirmText: 'Delete',
+      danger: true
+    });
+    if (confirmed) {
       await deleteScreenshotWithUiCleanup(target);
+    }
+  });
+
+  // ===== In-App Confirm / Prompt Dialog Wiring =====
+  document.getElementById('confirmDialogOkBtn').addEventListener('click', () => settleActiveDialog(true));
+  document.getElementById('confirmDialogCancelBtn').addEventListener('click', cancelActiveDialog);
+  document.getElementById('confirmDialogCloseBtn').addEventListener('click', cancelActiveDialog);
+  document.getElementById('confirmDialogBackdrop').addEventListener('click', cancelActiveDialog);
+
+  const promptInput = document.getElementById('promptDialogInput');
+  document.getElementById('promptDialogOkBtn').addEventListener('click', () => {
+    settleActiveDialog(promptInput.value);
+  });
+  document.getElementById('promptDialogCancelBtn').addEventListener('click', cancelActiveDialog);
+  document.getElementById('promptDialogCloseBtn').addEventListener('click', cancelActiveDialog);
+  document.getElementById('promptDialogBackdrop').addEventListener('click', cancelActiveDialog);
+
+  promptInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      settleActiveDialog(promptInput.value);
     }
   });
 }

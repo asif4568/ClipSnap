@@ -1,0 +1,19 @@
+# Installed packages — restored with "npm install", never committed (362 MB)
+node_modules/
+
+# npm / build noise
+npm-debug.log*
+dist/
+build/
+out/
+
+# Editor & OS files
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Local app data (screenshots and settings live outside the project, but just in case)
+*.log
+clipsnap-config.json
