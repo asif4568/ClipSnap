@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClipSnap - Quick Capture</title>
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <style>
+        :root {
+            --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            --bg-glass: rgba(18, 19, 24, 0.65);
+            --border-glass: rgba(255, 255, 255, 0.16);
+            --text-primary: #ffffff;
+            --text-secondary: #a0a09e;
+            --accent-blue: #2383e2;
+            
+            /* Notion Tag Colors */
+            --tag-purple: rgba(105, 64, 165, 0.3);
+            --tag-purple-text: #d1b3ff;
+            --tag-blue: rgba(0, 120, 223, 0.3);
+            --tag-blue-text: #89c8ff;
+            --tag-yellow: rgba(233, 168, 0, 0.3);
+            --tag-yellow-text: #ffe279;
+            --tag-green: rgba(0, 135, 107, 0.3);
+            --tag-green-text: #7ce3b6;
+            --tag-gray: rgba(227, 226, 224, 0.2);
+            --tag-gray-text: #d3d1cb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: var(--font-family);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 8px;
+            overflow: hidden;
+        }
+
+        .notion-hud {
+            background: var(--bg-glass);
+            backdrop-filter: blur(32px) saturate(190%);
+            -webkit-backdrop-filter: blur(32px) saturate(190%);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 384px;
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            user-select: none;
+            -webkit-app-region: drag;
+        }
+
+        /* Countdown line */
+        .progress-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 2.5px;
+            width: 100%;
+            background: linear-gradient(90deg, #00d2ff, #2383e2);
+            transition: width 0.08s linear;
+            z-index: 20;
+        }
+
+        .hud-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px 6px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .header-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .app-icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        .app-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.2px;
+        }
+
+        .status-pill {
+            font-size: 10px;
+            background: rgba(35, 131, 226, 0.25);
+            color: #89c8ff;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            -webkit-app-region: no-drag;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 12px;
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: var(--text-primary);
+        }
+
+        .icon-btn.active {
+            color: #ffa877;
+            background: rgba(245, 93, 0, 0.25);
+            box-shadow: 0 0 8px rgba(245, 93, 0, 0.4);
+        }
+
+        /* Body Section */
+        .hud-body {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            gap: 12px;
+            -webkit-app-region: no-drag;
+        }
+
+        .thumb-box {
+            position: relative;
+            width: 76px;
+            height: 52px;
+            flex-shrink: 0;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: #0f1015;
+            cursor: grab;
+        }
+
+        .thumb-box:active {
+            cursor: grabbing;
+        }
+
+        .popup-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.2s ease;
+        }
+
+        .thumb-box:hover .popup-preview {
+            transform: scale(1.06);
+        }
+
+        .drag-badge {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            background: rgba(0, 0, 0, 0.7);
+            font-size: 8px;
+            color: #fff;
+            padding: 1px 3px;
+            border-radius: 3px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .thumb-box:hover .drag-badge {
+            opacity: 1;
+        }
+
+        .info-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .name-input {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            font-size: 12px;
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 6px;
+            outline: none;
+            width: 100%;
+            transition: all 0.15s ease;
+        }
+
+        .name-input:focus {
+            background: rgba(255, 255, 255, 0.14);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(35, 131, 226, 0.2);
+        }
+
+        .actions-strip {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .hud-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text-primary);
+            font-size: 11px;
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .hud-btn:hover {
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .hud-btn.primary {
+            background: rgba(35, 131, 226, 0.35);
+            border-color: rgba(35, 131, 226, 0.6);
+            color: #89c8ff;
+        }
+
+        .hud-btn.primary:hover {
+            background: rgba(35, 131, 226, 0.55);
+            border-color: rgba(35, 131, 226, 0.85);
+        }
+
+        /* Tags Row */
+        .tags-carousel {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px 10px 12px;
+            overflow-x: auto;
+            -webkit-app-region: no-drag;
+        }
+
+        .tags-carousel::-webkit-scrollbar {
+            height: 0px;
+        }
+
+        .tag-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .tag-pill:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.2);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .tag-pill:active {
+            transform: scale(0.96);
+        }
+
+        /* Toast Feedback */
+        .toast-banner {
+            position: absolute;
+            inset: 0;
+            background: rgba(18, 19, 24, 0.95);
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #7ce3b6;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 30;
+        }
+
+        .toast-banner.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="notion-hud" id="hudCard">
+        <div class="progress-bar" id="progressBar"></div>
+
+        <!-- Toast Feedback -->
+        <div class="toast-banner" id="toastBanner">
+            <span id="toastIcon">✓</span>
+            <span id="toastText">Saved</span>
+        </div>
+
+        <!-- Header -->
+        <div class="hud-header">
+            <div class="header-title-wrap">
+                <img src="icon.svg" class="app-icon" alt="ClipSnap">
+                <span class="app-name">ClipSnap</span>
+                <span class="status-pill">New Snap</span>
+            </div>
+            <div class="header-controls">
+                <button class="icon-btn" id="pinBtn" title="Pin window (keeps open)">📌</button>
+                <button class="icon-btn" id="closeBtn" title="Dismiss">✕</button>
+            </div>
+        </div>
+
+        <!-- Body -->
+        <div class="hud-body">
+            <div class="thumb-box" id="thumbBox" title="Drag to external apps or click to annotate" draggable="true">
+                <img id="popupPreview" class="popup-preview" src="" alt="Screenshot">
+                <span class="drag-badge">DRAG</span>
+            </div>
+            <div class="info-col">
+                <input type="text" id="snapNameInput" class="name-input" placeholder="Screenshot name" title="Edit filename">
+                <div class="actions-strip">
+                    <button class="hud-btn primary" id="editBtn" title="Open Annotation Studio">
+                        ✏️ Annotate
+                    </button>
+                    <button class="hud-btn" id="copyBtn" title="Copy Image">
+                        📋 Copy
+                    </button>
+                    <button class="hud-btn" id="revealBtn" title="Reveal in Folder">
+                        📁 Open
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Tags Carousel (dynamically rendered) -->
+        <div class="tags-carousel" id="tagsCarousel">
+            <!-- Dynamic category pills -->
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

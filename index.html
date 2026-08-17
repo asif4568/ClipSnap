@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClipSnap — Modern Notion Edition</title>
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="glass-ambient-bg"></div>
+
+    <!-- Custom Frameless Window Titlebar -->
+    <div class="custom-titlebar" id="customTitlebar">
+        <div class="titlebar-drag-region">
+            <div class="titlebar-app-info">
+                <img src="icon.svg" class="titlebar-icon" alt="CS">
+                <span class="titlebar-app-name">ClipSnap</span>
+            </div>
+        </div>
+        <div class="titlebar-window-controls">
+            <button class="win-btn win-minimize" id="winMinimizeBtn" title="Minimize">
+                <svg width="10" height="1" viewBox="0 0 10 1" fill="currentColor"><rect width="10" height="1"/></svg>
+            </button>
+            <button class="win-btn win-maximize" id="winMaximizeBtn" title="Maximize">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1">
+                    <rect x="0.5" y="0.5" width="9" height="9"/>
+                </svg>
+            </button>
+            <button class="win-btn win-close" id="winCloseBtn" title="Close">
+                <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" stroke-width="1.2">
+                    <line x1="0" y1="0" x2="10" y2="10"/>
+                    <line x1="10" y1="0" x2="0" y2="10"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="app-layout" id="appLayout">
+        <!-- Notion-style Expandable / Collapsible Sidebar -->
+        <aside class="notion-sidebar" id="sidebar">
+            <!-- Workspace Header with Collapse Toggle -->
+            <div class="workspace-header">
+                <div class="workspace-avatar">
+                    <img src="icon.svg" class="workspace-icon" alt="ClipSnap">
+                </div>
+                <div class="workspace-meta">
+                    <span class="workspace-name">ClipSnap</span>
+                    <span class="workspace-plan">Workspace</span>
+                </div>
+                <button class="sidebar-toggle-btn" id="sidebarToggleBtn" title="Toggle Sidebar">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+            </div>
+
+            <!-- Sidebar Category Search Input -->
+            <div class="sidebar-search-box" id="sidebarSearchWrap">
+                <svg class="sidebar-search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <input type="text" id="sidebarCategorySearch" class="sidebar-category-input" placeholder="Filter categories..." autocomplete="off">
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="sidebar-nav">
+                <div class="nav-group">
+                    <div class="group-title">WORKSPACE</div>
+                    <div class="nav-link active" data-folder="all" id="navAllSnaps" title="All Snaps">
+                        <svg class="nav-svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        <span class="nav-text">All Snaps</span>
+                        <span class="nav-badge" id="badgeAll">0</span>
+                    </div>
+                    <div class="nav-link" data-folder="unsorted" id="navUnsorted" title="Unsorted Inbox">
+                        <svg class="nav-svg-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+                        <span class="nav-text">Unsorted</span>
+                        <span class="nav-badge alert" id="badgeUnsorted">0</span>
+                    </div>
+                </div>
+
+                <div class="nav-divider"></div>
+
+                <div class="nav-group">
+                    <div class="group-header">
+                        <span class="group-title">CATEGORIES</span>
+                        <button class="add-category-mini-btn" id="quickAddCategoryBtn" title="Create Category">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        </button>
+                    </div>
+                    <div id="categoriesList" class="categories-list">
+                        <!-- Dynamically populated with modern stroke SVG icons -->
+                    </div>
+                    <button class="add-category-row-btn" id="addCategoryBtn" title="New Category">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span class="nav-text">New Category</span>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Sidebar Footer with Settings and Storage Buttons -->
+            <div class="sidebar-footer">
+                <button class="footer-btn" id="openSettingsBtn" title="App Settings">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span class="theme-label">Settings</span>
+                </button>
+                <button class="footer-btn" id="openPicturesFolderBtn" title="Open Storage Folder in Explorer">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    <span class="theme-label">Storage</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Workspace Area -->
+        <main class="main-stage">
+            <!-- Notion Top Bar with Dashboard Search -->
+            <header class="notion-topbar">
+                <div class="topbar-left">
+                    <button class="expand-sidebar-btn" id="expandSidebarBtn" style="display: none;" title="Expand Sidebar">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                    </button>
+                    <div class="breadcrumb-trail">
+                        <span class="crumb root">ClipSnap</span>
+                        <span class="crumb-separator">/</span>
+                        <span class="crumb active" id="currentFolderCrumb">All Snaps</span>
+                    </div>
+                </div>
+
+                <div class="topbar-right">
+                    <!-- Dashboard Search Input by Name -->
+                    <div class="search-input-wrapper">
+                        <svg class="search-symbol" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        <input type="text" id="searchInput" class="notion-search-input" placeholder="Search by name... (Ctrl+K)" autocomplete="off">
+                        <button class="clear-search-btn" id="clearSearchBtn" style="display: none;">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- View Switcher (Gallery vs Table) -->
+                    <div class="segmented-control" id="viewSwitcher">
+                        <button class="segment-btn active" data-view="gallery" title="Gallery Grid View">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                            <span>Gallery</span>
+                        </button>
+                        <button class="segment-btn" data-view="table" title="Database Table View">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                            <span>Table</span>
+                        </button>
+                    </div>
+
+                    <!-- Sort Menu -->
+                    <div class="dropdown-wrap">
+                        <select id="sortSelect" class="notion-select" title="Sort Screenshots">
+                            <option value="newest">⚡ Newest First</option>
+                            <option value="oldest">⏳ Oldest First</option>
+                            <option value="name">🔤 Name (A-Z)</option>
+                        </select>
+                    </div>
+
+                    <!-- Batch Select Toggle Button -->
+                    <button class="toolbar-btn" id="batchSelectToggleBtn" title="Select multiple screenshots">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        <span id="batchBtnLabel">Select</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Notion Page Header -->
+            <section class="notion-page-header">
+                <div class="page-title-row">
+                    <div class="page-icon-box" id="pageIconBox">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </div>
+                    <h1 class="page-title" id="pageTitle">All Snaps</h1>
+                    <span class="count-pill" id="pageItemCount">0 items</span>
+                </div>
+                <div class="page-description" id="pageDesc">
+                    Manage and organize all your clipboard captures effortlessly.
+                </div>
+            </section>
+
+            <!-- Dashboard Gallery Grid View -->
+            <div class="gallery-container" id="galleryContainer">
+                <div class="notion-grid" id="galleryGrid">
+                    <!-- Cards rendered here -->
+                </div>
+            </div>
+
+            <!-- Database Table View -->
+            <div class="table-container" id="tableContainer" style="display: none;">
+                <table class="notion-table" id="notionTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="selectAllCheckbox"></th>
+                            <th style="width: 80px;">Preview</th>
+                            <th>Name</th>
+                            <th style="width: 150px;">Category</th>
+                            <th style="width: 160px;">Date & Time</th>
+                            <th style="width: 170px; text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Rows rendered here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div class="notion-empty-state" id="emptyState" style="display: none;">
+                <div class="empty-icon-wrap">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                </div>
+                <div class="empty-heading">No screenshots found</div>
+                <div class="empty-subtext">Take a screenshot or press Win + PrtScn to automatically capture and organize it here.</div>
+            </div>
+
+            <!-- Floating Batch Action Bar -->
+            <div class="floating-batch-bar" id="floatingBatchBar">
+                <div class="batch-count-wrap">
+                    <span class="batch-badge" id="selectedCountBadge">0</span>
+                    <span class="batch-text">selected</span>
+                </div>
+                <div class="batch-actions">
+                    <button class="batch-action-btn" id="batchSelectAllBtn">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        <span id="batchSelectAllLabel">Select All</span>
+                    </button>
+                    <div class="batch-move-dropdown-wrap">
+                        <select id="batchMoveSelect" class="batch-select">
+                            <option value="" disabled selected>Move to Category...</option>
+                        </select>
+                    </div>
+                    <button class="batch-action-btn" id="batchCopyBtn">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        <span>Copy</span>
+                    </button>
+                    <button class="batch-action-btn danger" id="batchDeleteBtn">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Delete</span>
+                    </button>
+                    <button class="batch-close-btn" id="batchCancelBtn" title="Clear Selection">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal" style="display: none;">
+        <div class="modal-backdrop" id="closeSettingsBackdrop"></div>
+        <div class="notion-dialog settings-dialog">
+            <div class="dialog-header">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <h3>Settings</h3>
+                </div>
+                <button class="dialog-close-btn" id="closeSettingsBtn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="dialog-body">
+                <!-- Storage Directory Section -->
+                <div class="settings-section">
+                    <label class="settings-label">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        Storage Folder
+                    </label>
+                    <div class="settings-storage-card">
+                        <div class="storage-path-display" id="settingsStoragePath">Loading...</div>
+                        <div class="storage-actions-row">
+                            <button class="btn-primary storage-browse-btn" id="settingsBrowseBtn">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                                Change Folder
+                            </button>
+                            <button class="btn-subtle" id="settingsOpenExplorerBtn">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                Open in Explorer
+                            </button>
+                        </div>
+                        <div class="settings-status-msg" id="settingsStatusMsg"></div>
+                    </div>
+                    <span class="settings-hint">All screenshots and categories are stored in this folder. You can point ClipSnap to any folder on your disk.</span>
+                </div>
+
+                <!-- Appearance -->
+                <div class="settings-section">
+                    <label class="settings-label">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                        Appearance
+                    </label>
+                    <div class="theme-picker-row">
+                        <button class="theme-choice-btn active" id="chooseDarkTheme">Pitch Black</button>
+                        <button class="theme-choice-btn" id="chooseLightTheme">Notion Light</button>
+                    </div>
+                </div>
+
+                <!-- Keyboard Shortcuts -->
+                <div class="settings-section">
+                    <label class="settings-label">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.001"/><path d="M10 8h.001"/><path d="M14 8h.001"/><path d="M18 8h.001"/><path d="M6 12h.001"/><path d="M10 12h.001"/><path d="M14 12h.001"/><path d="M18 12h.001"/><path d="M8 16h8"/></svg>
+                        Keyboard Shortcuts
+                    </label>
+                    <div class="shortcuts-grid">
+                        <div class="shortcut-item"><span>Search Snaps</span><kbd>Ctrl+K</kbd></div>
+                        <div class="shortcut-item"><span>Capture Screenshot</span><kbd>Win+PrtScn</kbd></div>
+                        <div class="shortcut-item"><span>Close / Deselect</span><kbd>Esc</kbd></div>
+                        <div class="shortcut-item"><span>Minimize Window</span><kbd>Win+↓</kbd></div>
+                    </div>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button class="btn-primary" id="saveSettingsBtn">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Annotation & Markup Studio Modal -->
+    <div class="modal" id="editorModal" style="display: none;">
+        <div class="modal-backdrop" id="closeEditorBackdrop"></div>
+        <div class="editor-window">
+            <div class="editor-header">
+                <div class="editor-title-wrap">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    <div class="editor-file-info">
+                        <input type="text" id="editorFileName" class="editor-name-input" placeholder="Screenshot Name">
+                        <span class="editor-file-path" id="editorFilePath"></span>
+                    </div>
+                </div>
+
+                <div class="editor-header-actions">
+                    <button class="btn-subtle" id="editorUndoBtn" title="Undo last action">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                        <span>Undo</span>
+                    </button>
+                    <button class="btn-subtle" id="editorClearBtn" title="Clear all annotations">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        <span>Clear</span>
+                    </button>
+                    <button class="btn-subtle" id="editorCopyClipboardBtn" title="Copy to clipboard">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        <span>Copy</span>
+                    </button>
+                    <button class="btn-secondary" id="editorSaveCopyBtn" title="Save as a new copy">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span>Save Copy</span>
+                    </button>
+                    <button class="btn-primary" id="editorSaveBtn" title="Save & Overwrite">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        <span>Save</span>
+                    </button>
+                    <button class="btn-close" id="editorCloseBtn" title="Close Editor">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tool Palette Bar -->
+            <div class="editor-tools-bar">
+                <div class="tool-group">
+                    <button class="tool-btn active" data-tool="pen" title="Draw Tool">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        <span>Draw</span>
+                    </button>
+                    <button class="tool-btn" data-tool="highlighter" title="Highlighter">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h3l6-6"/><path d="m22 2-2.5 2.5a2.12 2.12 0 0 1-3 0l-4-4a2.12 2.12 0 0 1 0-3L15 0"/><path d="M14 4l6 6"/></svg>
+                        <span>Highlight</span>
+                    </button>
+                    <button class="tool-btn" data-tool="rect" title="Rectangle Box">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+                        <span>Box</span>
+                    </button>
+                    <button class="tool-btn" data-tool="arrow" title="Arrow Pointer">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        <span>Arrow</span>
+                    </button>
+                    <button class="tool-btn" data-tool="blur" title="Blur / Redact Area">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        <span>Blur</span>
+                    </button>
+                    <button class="tool-btn" data-tool="text" title="Add Text">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                        <span>Text</span>
+                    </button>
+                </div>
+
+                <div class="tool-divider"></div>
+
+                <!-- Color Swatches -->
+                <div class="color-palette" id="colorPalette">
+                    <span class="color-swatch active" data-color="#ff4757" style="background: #ff4757;" title="Red"></span>
+                    <span class="color-swatch" data-color="#2ed573" style="background: #2ed573;" title="Green"></span>
+                    <span class="color-swatch" data-color="#1e90ff" style="background: #1e90ff;" title="Blue"></span>
+                    <span class="color-swatch" data-color="#ffa502" style="background: #ffa502;" title="Yellow"></span>
+                    <span class="color-swatch" data-color="#ffffff" style="background: #ffffff;" title="White"></span>
+                    <span class="color-swatch" data-color="#1e1e1e" style="background: #1e1e1e;" title="Black"></span>
+                </div>
+
+                <div class="tool-divider"></div>
+
+                <!-- Line Width Slider -->
+                <div class="stroke-slider-wrap">
+                    <span class="slider-label">Size</span>
+                    <input type="range" id="strokeSizeInput" min="2" max="24" value="4" class="range-slider">
+                </div>
+            </div>
+
+            <!-- Canvas Viewport -->
+            <div class="editor-canvas-container" id="canvasContainer">
+                <canvas id="annotationCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Category Modal with Stroke SVG Icon Selector -->
+    <div class="modal" id="categoryModal" style="display: none;">
+        <div class="modal-backdrop" id="closeCategoryBackdrop"></div>
+        <div class="notion-dialog">
+            <div class="dialog-header">
+                <h3>Create New Category</h3>
+                <button class="dialog-close-btn" id="closeModal">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="dialog-body">
+                <label class="dialog-label">Choose Icon</label>
+                <div class="icon-picker-grid" id="iconPickerGrid">
+                    <!-- Modern Stroke SVG Icon Buttons -->
+                    <button class="icon-opt-btn active" data-icon="folder" title="Folder">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    </button>
+                    <button class="icon-opt-btn" data-icon="code" title="Code">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                    </button>
+                    <button class="icon-opt-btn" data-icon="book" title="Study / Book">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    </button>
+                    <button class="icon-opt-btn" data-icon="receipt" title="Bills / Finance">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    </button>
+                    <button class="icon-opt-btn" data-icon="user" title="Personal">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </button>
+                    <button class="icon-opt-btn" data-icon="brush" title="Design">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+                    </button>
+                    <button class="icon-opt-btn" data-icon="bulb" title="Ideas">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>
+                    </button>
+                    <button class="icon-opt-btn" data-icon="file-text" title="Notes">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button class="icon-opt-btn" data-icon="briefcase" title="Work">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    </button>
+                    <button class="icon-opt-btn" data-icon="target" title="Goals">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                    </button>
+                    <button class="icon-opt-btn" data-icon="rocket" title="Projects">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-2.95 9.95A22.05 22.05 0 0 1 15 12z"/></svg>
+                    </button>
+                    <button class="icon-opt-btn" data-icon="camera" title="Captures">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    </button>
+                </div>
+
+                <label class="dialog-label">Category Name</label>
+                <input type="text" id="categoryInput" class="notion-input" placeholder="e.g. Design, Invoices, Dev..." autocomplete="off">
+            </div>
+            <div class="dialog-footer">
+                <button class="btn-subtle" id="cancelModalBtn">Cancel</button>
+                <button class="btn-primary" id="confirmModalBtn">Create Category</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu with Modern SVG Icons -->
+    <div id="contextMenu" class="notion-context-menu" style="display: none;">
+        <div class="menu-item" id="contextAnnotate">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            <span>Annotate & Markup</span>
+        </div>
+        <div class="menu-item" id="contextCopyImage">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span>Copy Image</span>
+        </div>
+        <div class="menu-item" id="contextOpenExplorer">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span>Reveal in Explorer</span>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-item danger" id="contextDelete">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span>Delete Screenshot</span>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>

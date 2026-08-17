@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">ClipSnap brand symbol</title>
+  <desc id="desc">A minimal interlocking ribbon symbol forming an abstract C and S, representing clipping and snapping.</desc>
+
+  <defs>
+    <linearGradient id="top" x1="52" y1="54" x2="184" y2="135" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22D3EE"/>
+      <stop offset="0.48" stop-color="#0EA5E9"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+
+    <linearGradient id="bottom" x1="72" y1="205" x2="205" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8B5CF6"/>
+      <stop offset="0.45" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+
+    <filter id="softShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <!-- Abstract ClipSnap monogram: two interlocking capture ribbons -->
+  <g filter="url(#softShadow)">
+    <!-- Upper ribbon / C -->
+    <path
+      d="M184 58
+         H106
+         C76 58 54 79 54 108
+         C54 137 76 158 106 158
+         H132
+         L153 137
+         H108
+         C94 137 84 126 84 108
+         C84 90 94 79 108 79
+         H184
+         C191 79 196 75 196 68
+         C196 62 191 58 184 58 Z"
+      fill="url(#top)"/>
+
+    <!-- Lower ribbon / S -->
+    <path
+      d="M72 198
+         H151
+         C181 198 202 177 202 148
+         C202 119 181 98 151 98
+         H125
+         L104 119
+         H149
+         C163 119 173 130 173 148
+         C173 166 163 177 149 177
+         H72
+         C65 177 60 181 60 188
+         C60 194 65 198 72 198 Z"
+      fill="url(#bottom)"/>
+  </g>
+
+  <!-- Small precision cuts: subtle "snap" cues -->
+  <path d="M49 55h18M49 55v18" fill="none" stroke="#0EA5E9" stroke-width="7" stroke-linecap="round"/>
+  <path d="M207 201h-18M207 201v-18" fill="none" stroke="#6366F1" stroke-width="7" stroke-linecap="round"/>
+</svg>

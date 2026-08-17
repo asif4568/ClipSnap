@@ -1,0 +1,14 @@
+{
+  "name": "clipsnap",
+  "version": "1.0.0",
+  "description": "Auto-save screenshots to clipboard and categorize them",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "latest"
+  },
+  "author": "First-Year Student",
+  "license": "MIT"
+}
